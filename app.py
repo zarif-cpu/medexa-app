@@ -13,7 +13,6 @@ import easyocr
 # 1. DATABASE SETUP (Membaca fail Excel .xlsx)
 # ==========================================
 def load_medication_data():
-    # Automatically finds your Excel file even if named 'medicines.xlsx' or 'medicines'
     target_file = None
     for file in os.listdir("."):
         if "medicines" in file.lower() and (file.endswith(".xlsx") or file.endswith(".csv")):
@@ -22,7 +21,6 @@ def load_medication_data():
             
     if target_file:
         try:
-            # Reads Excel or CSV safely based on the file type found
             if target_file.endswith(".xlsx"):
                 data = pd.read_excel(target_file)
             else:
@@ -86,8 +84,8 @@ def send_expiry_email(recipient_email, patient_name, medicine_name, expiry_date)
 # ==========================================
 st.set_page_config(page_title="Medexa Assistant", page_icon="🚀", layout="centered")
 
-# Links phone browsers directly to the PWA identity manifest
-st.markdown('<link rel="manifest" href="./manifest.json">', unsafe_allow_True)
+# 🎯 FIXED TYPO HERE: Changed unsafe_allow_True to unsafe_allow_html=True
+st.markdown('<link rel="manifest" href="./manifest.json">', unsafe_allow_html=True)
 
 st.title("🚀 Medexa")
 st.subheader("Medication Expiry Assistant")
@@ -106,15 +104,12 @@ if enable_camera:
     if picture:
         with st.spinner("Membaca teks pada botol... 🔍"):
             try:
-                # Convert camera stream image to format EasyOCR understands
                 img = Image.open(picture)
                 img_array = np.array(img)
                 
-                # Run OCR reader (Using English & Malay text settings)
                 reader = easyocr.Reader(['en', 'ms'], gpu=False)
                 ocr_result = reader.readtext(img_array)
                 
-                # Combine all found words into one string
                 detected_words = [text[1] for text in ocr_result]
                 scanned_text = " ".join(detected_words)
                 
@@ -125,7 +120,6 @@ if enable_camera:
 st.write("---")
 
 # --- MEDICINE SEARCH ENGINE ---
-# If OCR detected a word, pre-fill it into the search box automatically!
 search_default = scanned_text if scanned_text else ""
 search_query = st.text_input("🔍 Cari Ubat (Masukkan Nama Generik atau Jenama):", value=search_default, placeholder="Contoh: Acriflavine atau Prime's...")
 
@@ -159,7 +153,7 @@ if search_query and not df.empty:
                 st.markdown("🛑 **Arahan Penyimpanan & Perhatian:**")
                 st.info(clean_storage)
                 
-                st.markdown("📚 **Sumber Saintifik & Rujukan:**")
+                st.markdown("📚 **Sumber Scientific & Rujukan:**")
                 st.caption(clean_rujukan)
                 
                 st.write("---")
@@ -188,15 +182,12 @@ if search_query and not df.empty:
                     else:
                         st.warning("Sila isi Nama Pesakit dan Emel terlebih dahulu!")
     else:
-        # 💡 PRO TIP SMART FIX: If exact match failed, try matching individual words from the OCR scan!
         partial_match = False
         for word in search_query.split():
-            if len(word) > 3: # Skip small words like "of", "the", "mg"
+            if len(word) > 3:
                 matched = df[df['Nama Generik'].str.contains(word, case=False, na=False) | df['Jenama'].str.contains(word, case=False, na=False)]
                 if not matched.empty:
                     st.warning(f"Sistem tidak menjumpai ayat penuh, tetapi menemui padanan untuk kata kunci ubat: **{word}**")
-                    
-                    # Display the first partial match found
                     for index, row in matched.iterrows():
                         st.markdown(f"### 💊 {row['Nama Generik']} ({row['Jenama']})")
                         st.info(f"🛑 Arahan Penyimpanan: {row['Penyimpanan & Perhatian']}")
