@@ -5,9 +5,12 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
+import numpy as np
+from PIL import Image
+import easyocr
 
 # ==========================================
-# 1. DATABASE SETUP (Reading your Excel File)
+# 1. DATABASE SETUP (Membaca fail Excel .xlsx)
 # ==========================================
 def load_medication_data():
     # Automatically finds your Excel file even if named 'medicines.xlsx' or 'medicines'
@@ -31,13 +34,13 @@ def load_medication_data():
             st.error(f"⚠️ Error reading the data file: {e}")
             return pd.DataFrame()
     else:
-        st.error("⚠️ Pangkalan data ubat 'medicines.xlsx' tidak ditemui! Please make sure your Excel spreadsheet is inside the Medexa_App folder.")
+        st.error("⚠️ Pangkalan data ubat 'medicines.xlsx' tidak ditemui! Please make sure your Excel spreadsheet is inside your GitHub folder.")
         return pd.DataFrame()
 
 df = load_medication_data()
 
 # ==========================================
-# 2. AUTOMATED GOVERNMENT EMAIL SYSTEM (MOH)
+# 2. SISTEM EMEL AUTOMATIK KERAJAAN (MOH)
 # ==========================================
 def send_expiry_email(recipient_email, patient_name, medicine_name, expiry_date):
     sender_email = "medexa@moh.gov.my"
@@ -75,23 +78,56 @@ def send_expiry_email(recipient_email, patient_name, medicine_name, expiry_date)
         server.quit()
         return True
     except Exception as e:
-        print(f"MOH Email Server Error: {e}")
+        print(f"Ralat Sistem Emel MOH: {e}")
         return False
 
 # ==========================================
-# 3. STREAMLIT FRONTEND UI (PWA Enabled)
+# 3. STREAMLIT FRONTEND UI (PWA Aktif)
 # ==========================================
 st.set_page_config(page_title="Medexa Assistant", page_icon="🚀", layout="centered")
 
 # Links phone browsers directly to the PWA identity manifest
-st.markdown('<link rel="manifest" href="./manifest.json">', unsafe_allow_html=True)
+st.markdown('<link rel="manifest" href="./manifest.json">', unsafe_allow_True)
 
 st.title("🚀 Medexa")
 st.subheader("Medication Expiry Assistant")
 st.caption("Sistem semakan jangka hayat ubat pelbagai dos & kalkulator notifikasi pintar.")
 st.write("---")
 
-search_query = st.text_input("🔍 Cari Ubat (Masukkan Nama Generik atau Jenama):", placeholder="Contoh: Acriflavine atau Prime's...")
+# --- CAMERA OCR SCANNER FEATURE ---
+st.markdown("### 📷 Imbas Botol Ubat Anda")
+enable_camera = st.checkbox("Aktifkan Kamera Telefon")
+
+scanned_text = ""
+
+if enable_camera:
+    picture = st.camera_input("Ambil gambar label botol ubat dengan jelas")
+    
+    if picture:
+        with st.spinner("Membaca teks pada botol... 🔍"):
+            try:
+                # Convert camera stream image to format EasyOCR understands
+                img = Image.open(picture)
+                img_array = np.array(img)
+                
+                # Run OCR reader (Using English & Malay text settings)
+                reader = easyocr.Reader(['en', 'ms'], gpu=False)
+                ocr_result = reader.readtext(img_array)
+                
+                # Combine all found words into one string
+                detected_words = [text[1] for text in ocr_result]
+                scanned_text = " ".join(detected_words)
+                
+                st.success(f"🤖 Teks Dikesan: *{scanned_text}*")
+            except Exception as e:
+                st.error(f"Gagal membaca imej: {e}")
+
+st.write("---")
+
+# --- MEDICINE SEARCH ENGINE ---
+# If OCR detected a word, pre-fill it into the search box automatically!
+search_default = scanned_text if scanned_text else ""
+search_query = st.text_input("🔍 Cari Ubat (Masukkan Nama Generik atau Jenama):", value=search_default, placeholder="Contoh: Acriflavine atau Prime's...")
 
 if search_query and not df.empty:
     filtered_df = df[
@@ -143,14 +179,28 @@ if search_query and not df.empty:
                 
                 if st.button(f"Aktifkan Amaran Automatik", key=f"btn_{index}"):
                     if recipient_email and patient_name:
-                        with st.spinner("Menghubungi pelayan emel kesihatan MOH..."):
+                        with st.spinner("Menghubungi pelayan emel keselamatan MOH..."):
                             success = send_expiry_email(recipient_email, patient_name, nama_generik, expiry_result)
                             if success:
-                                st.success(f"🎉 Berjaya! Notifikasi amaran dijadualkan. Emel pengesahan dihantar ke {recipient_email}")
+                                st.success(f"🎉 Berjaya! Notifikasi amaran amaran dijadualkan. Emel pengesahan dihantar ke {recipient_email}")
                             else:
                                 st.warning("Notifikasi disimpan secara lokal. (Sistem berjalan dalam mod simulasi luar talian sehinggalah IT Hospital mengesahkan kelayakan laluan SMTP).")
                     else:
                         st.warning("Sila isi Nama Pesakit dan Emel terlebih dahulu!")
     else:
-        st.error("Maaf, ubat tidak ditemui dalam pangkalan data hospital.")
-        
+        # 💡 PRO TIP SMART FIX: If exact match failed, try matching individual words from the OCR scan!
+        partial_match = False
+        for word in search_query.split():
+            if len(word) > 3: # Skip small words like "of", "the", "mg"
+                matched = df[df['Nama Generik'].str.contains(word, case=False, na=False) | df['Jenama'].str.contains(word, case=False, na=False)]
+                if not matched.empty:
+                    st.warning(f"Sistem tidak menjumpai ayat penuh, tetapi menemui padanan untuk kata kunci ubat: **{word}**")
+                    
+                    # Display the first partial match found
+                    for index, row in matched.iterrows():
+                        st.markdown(f"### 💊 {row['Nama Generik']} ({row['Jenama']})")
+                        st.info(f"🛑 Arahan Penyimpanan: {row['Penyimpanan & Perhatian']}")
+                    partial_match = True
+                    break
+        if not partial_match:
+            st.error("Maaf, nama ubat tidak ditemui dalam pangkalan data hospital.")
