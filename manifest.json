@@ -1,0 +1,17 @@
+{
+  "short_name": "Medexa",
+  "name": "Medexa Medication Expiry Assistant",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/4320/4320347.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "background_color": "#ffffff",
+  "theme_color": "#ff4b4b",
+  "display": "standalone",
+  "orientation": "portrait"
+}
