@@ -3,15 +3,15 @@
   "name": "Medexa Medication Expiry Assistant",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/4320/4320347.png",
-      "sizes": "512x512",
+      "src": "./logo.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ],
   "start_url": ".",
   "background_color": "#ffffff",
-  "theme_color": "#ff4b4b",
+  "theme_color": "#3182ce",
   "display": "standalone",
   "orientation": "portrait"
 }
