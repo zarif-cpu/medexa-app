@@ -8,6 +8,7 @@ import os
 import numpy as np
 from PIL import Image
 import easyocr
+import difflib  # 🚀 Built-in library for advanced text matching
 
 # ==========================================
 # 1. DATABASE SETUP
@@ -35,6 +36,16 @@ def load_medication_data():
         return pd.DataFrame()
 
 df = load_medication_data()
+
+# Create master verification lists for the AI filter to check against
+if not df.empty:
+    # Get all valid Generic and Brand names, drop empty rows, convert to string
+    valid_generics = df['Nama Generik'].dropna().astype(str).tolist()
+    valid_brands = df['Jenama'].dropna().astype(str).tolist()
+    # Combine both into a master list for the AI to cross-reference
+    allowed_vocabulary = list(set(valid_generics + valid_brands))
+else:
+    allowed_vocabulary = []
 
 # ==========================================
 # 2. EMAIL NOTIFICATION LOGIC
@@ -126,15 +137,36 @@ with nav_tab1:
     if enable_camera:
         picture = st.camera_input("Ambil gambar label botol ubat")
         if picture:
-            with st.spinner("Membaca teks ubat... 🔍"):
+            with st.spinner("Membaca & Menapis Teks Label... 🔍"):
                 try:
                     img = Image.open(picture)
                     img_array = np.array(img)
+                    
+                    # Run raw OCR scan
                     reader = easyocr.Reader(['en', 'ms'], gpu=False)
                     ocr_result = reader.readtext(img_array)
-                    detected_words = [text[1] for text in ocr_result]
-                    scanned_text = " ".join(detected_words)
-                    st.success(f"🤖 Dikesan: *{scanned_text}*")
+                    
+                    raw_words = [text[1] for text in ocr_result]
+                    
+                    # 🚀 THE OPTIMIZATION FILTER ENGINE 🚀
+                    matched_medications = []
+                    for word in raw_words:
+                        # Clean up punctuation/spacing from the token
+                        clean_word = word.strip(",.!精()[]-")
+                        if len(clean_word) < 4: 
+                            continue # Ignore useless small words like "mg", "ml", "xyz"
+                        
+                        # Match against database vocabulary with a 60% similarity threshold
+                        close_matches = difflib.get_close_matches(clean_word, allowed_vocabulary, n=1, cutoff=0.6)
+                        if close_matches:
+                            matched_medications.append(close_matches[0])
+                    
+                    if matched_medications:
+                        # Use the best distinct match discovered
+                        scanned_text = list(set(matched_medications))[0]
+                        st.success(f"🎯 AI Filtered Medication Match: **{scanned_text}**")
+                    else:
+                        st.warning("⚠️ Teks dibaca tetapi tiada padanan ubat yang sah dalam pangkalan data hospital.")
                 except Exception as e:
                     st.error(f"Gagal membaca imej: {e}")
 
@@ -155,10 +187,7 @@ with nav_tab1:
                 nama_generik = str(row.get('Nama Generik', 'Unknown'))
                 jenama = str(row.get('Jenama', 'Generic'))
                 
-                # 🚀 AUTOMATIC IMAGE UTILITY ENGINE 🚀
-                # Pulls the URL text directly from your 'Imej' column row item
                 image_url = str(row.get('Imej', '')).strip()
-                
                 if image_url and image_url.startswith("http"):
                     img_display = f'<img src="{image_url}" style="width:100%; height:100%; object-fit:contain;" onerror="this.onerror=null; this.parentElement.innerHTML=\'💊\';">'
                 else:
