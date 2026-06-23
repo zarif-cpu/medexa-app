@@ -54,14 +54,13 @@ reader = load_ocr_reader()
 # ==========================================
 # 2. LOCAL DATA STORAGE INITIALIZATION
 # ==========================================
-# Initialize a virtual medicine cabinet inside session memory if it doesn't exist
 if "medicine_cabinet" not in st.session_state:
     st.session_state.medicine_cabinet = []
 
 # ==========================================
 # 3. STREAMLIT CONFIG & CUSTOM MOBILE CSS
 # ==========================================
-st.set_page_config(page_title="Medexa Assistant", page_icon="🚀", layout="centered")
+st.set_page_config(page_title="Medexa Assistant", page_icon="🏥", layout="centered")
 st.markdown('<link rel="manifest" href="./manifest.json">', unsafe_allow_html=True)
 
 st.markdown("""
@@ -140,12 +139,17 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-st.title("🚀 Medexa")
+# 🚀 CUSTOM LOGO DISPLAY LOGIC
+if os.path.exists("logo.png"):
+    st.image("logo.png", width=180)
+else:
+    st.title("🏥 Medexa") # Fallback just in case the logo isn't uploaded yet
+
 st.subheader("Medication Expiry Assistant")
 st.caption("Sistem semakan jangka hayat ubat pelbagai dos & kalkulator notifikasi pintar.")
 st.write("---")
 
-# 🗄️ VIRTUAL CABINET UI INTERFACE
+# 🗄️ VIRTUAL CABINET UI INTERFACE WITH DOWNLOAD FEATURE
 st.markdown("### 🗄️ Kabinet Ubat Saya")
 if st.session_state.medicine_cabinet:
     for item in st.session_state.medicine_cabinet:
@@ -157,9 +161,25 @@ if st.session_state.medicine_cabinet:
                 🚨 <span style="color:#e53e3e; font-weight:bold;">Luput Keselamatan: {item['luput']}</span>
             </div>
         """, unsafe_allow_html=True)
-    if st.button("🗑️ Kosongkan Kabinet Ubat"):
-        st.session_state.medicine_cabinet = []
-        st.rerun()
+        
+    # Create Side-by-Side Buttons for Download and Clear
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🗑️ Kosongkan Kabinet"):
+            st.session_state.medicine_cabinet = []
+            st.rerun()
+    with col2:
+        # Convert Cabinet Dictionary to CSV format on the fly
+        cabinet_df = pd.DataFrame(st.session_state.medicine_cabinet)
+        cabinet_df.columns = ["Nama Ubat", "Pesakit", "Tarikh Dibuka", "Tarikh Luput Keselamatan"]
+        csv_export = cabinet_df.to_csv(index=False).encode('utf-8')
+        
+        st.download_button(
+            label="📥 Muat Turun Senarai",
+            data=csv_export,
+            file_name=f"Senarai_Ubat_Pesakit_{datetime.date.today()}.csv",
+            mime="text/csv",
+        )
 else:
     st.info("Kabinet ubat anda kosong. Cari ubat di bawah untuk menambah ke dalam rekod simpanan.")
 
@@ -231,7 +251,6 @@ if not df.empty:
                 </div>
             """, unsafe_allow_html=True)
             
-            # 🎯 RENAMED TOGGLE DRAWER EXPANDER HERE:
             with st.expander(f"ℹ️ Info Tarikh Luput Selepas Buka & Peringatan"):
                 try:
                     had_hari = int(row['Jangka Hayat Ubat Setelah Dibuka (hari)'])
@@ -249,7 +268,6 @@ if not df.empty:
                 expiry_result = opened_date + datetime.timedelta(days=had_hari)
                 st.error(f"⚠️ Luput keselamatan pada: {expiry_result.strftime('%d/%m/%Y')}")
                 
-                # 🚀 CABINET RECORD TRIGGER BUTTON
                 if st.button("💾 Simpan ke Kabinet Ubat Saya", key=f"save_{index}"):
                     if patient_name:
                         new_entry = {
