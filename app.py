@@ -40,7 +40,6 @@ df = load_medication_data()
 # 2. EMAIL NOTIFICATION LOGIC
 # ==========================================
 def send_expiry_email(recipient_email, patient_name, medicine_name, expiry_date):
-    # Simulated/wired backend logic for presenting
     return True
 
 # ==========================================
@@ -49,10 +48,8 @@ def send_expiry_email(recipient_email, patient_name, medicine_name, expiry_date)
 st.set_page_config(page_title="Medexa Assistant", page_icon="🚀", layout="centered")
 st.markdown('<link rel="manifest" href="./manifest.json">', unsafe_allow_html=True)
 
-# Custom injection to mimic a native mobile health application UI
 st.markdown("""
     <style>
-    /* Force main app container styling */
     .main .block-container {
         padding-top: 1rem;
         padding-bottom: 5rem;
@@ -60,8 +57,6 @@ st.markdown("""
         margin: 0 auto;
         background-color: #f7f9fa;
     }
-    
-    /* Header layout styling */
     .app-header {
         display: flex;
         justify-content: space-between;
@@ -75,8 +70,6 @@ st.markdown("""
         font-weight: 700;
         color: #1a202c;
     }
-    
-    /* Elegant Row Card Style matching your screenshot */
     .med-card {
         background-color: #ffffff;
         padding: 15px;
@@ -84,10 +77,6 @@ st.markdown("""
         display: flex;
         align-items: center;
         gap: 15px;
-        transition: background-color 0.2s;
-    }
-    .med-card:hover {
-        background-color: #f8fafc;
     }
     .med-img-box {
         width: 60px;
@@ -97,8 +86,8 @@ st.markdown("""
         display: flex;
         justify-content: center;
         align-items: center;
-        font-size: 28px;
         border: 1px solid #e2e8f0;
+        overflow: hidden;
     }
     .med-details {
         flex-grow: 1;
@@ -118,14 +107,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. BOTTOM NAVIGATION TABS FEATURE
+# 4. MAIN LAYOUT TABS
 # ==========================================
-# Creates the bottom navbar layout using Streamlit's structural native tabs
 nav_tab1, nav_tab2, nav_tab3 = st.tabs(["📋 Senarai Ubat", "⭐ Penilaian", "📝 Maklumbalas"])
 
-# --- TAB 1: CORE APPLICATION ---
 with nav_tab1:
-    # Mimicking mobile top utility bar
     st.markdown("""
         <div class="app-header">
             <span style="font-size:22px; cursor:pointer;">☰</span>
@@ -134,7 +120,6 @@ with nav_tab1:
         </div>
     """, unsafe_allow_html=True)
     
-    # AI Camera OCR Switcher
     enable_camera = st.checkbox("📷 Aktifkan Kamera Telefon / Imbas Botol")
     scanned_text = ""
     
@@ -153,11 +138,9 @@ with nav_tab1:
                 except Exception as e:
                     st.error(f"Gagal membaca imej: {e}")
 
-    # Search Bar Section
     search_default = scanned_text if scanned_text else ""
     search_query = st.text_input("Cari Nama Ubat atau Jenama:", value=search_default, placeholder="Taip di sini...")
     
-    # If the search input is empty, show ALL drugs by default just like your screenshot!
     if not df.empty:
         if search_query:
             filtered_df = df[
@@ -165,17 +148,22 @@ with nav_tab1:
                 df['Jenama'].str.contains(search_query, case=False, na=False)
             ]
         else:
-            filtered_df = df  # Default view lists everything in the database
+            filtered_df = df
             
         if not filtered_df.empty:
             for index, row in filtered_df.iterrows():
                 nama_generik = str(row.get('Nama Generik', 'Unknown'))
                 jenama = str(row.get('Jenama', 'Generic'))
                 
-                # Check if your Excel has an 'Icon' or 'Image' column, otherwise use an emoji fallback
-                img_display = "💊"
+                # 🚀 AUTOMATIC IMAGE UTILITY ENGINE 🚀
+                # Pulls the URL text directly from your 'Imej' column row item
+                image_url = str(row.get('Imej', '')).strip()
                 
-                # Render the clean item row card
+                if image_url and image_url.startswith("http"):
+                    img_display = f'<img src="{image_url}" style="width:100%; height:100%; object-fit:contain;" onerror="this.onerror=null; this.parentElement.innerHTML=\'💊\';">'
+                else:
+                    img_display = "💊"
+                
                 st.markdown(f"""
                     <div class="med-card">
                         <div class="med-img-box">{img_display}</div>
@@ -186,7 +174,6 @@ with nav_tab1:
                     </div>
                 """, unsafe_allow_html=True)
                 
-                # Interactive details drawer built directly underneath the modern card layout
                 with st.expander(f"⚙️ Urus & Tetapkan Notifikasi Expiry"):
                     try:
                         had_hari = int(row['Jangka Hayat Ubat Setelah Dibuka (hari)'])
@@ -197,7 +184,6 @@ with nav_tab1:
                     st.write(f"ℹ️ **Had Keselamatan:** {had_hari} Hari")
                     st.info(f"🛑 **Penyimpanan:** {row.get('Penyimpanan & Perhatian', 'N/A')}")
                     
-                    # Patient Setup Form
                     patient_name = st.text_input("Nama Pesakit:", key=f"name_{index}")
                     opened_date = st.date_input("Tarikh Botol Dibuka:", datetime.date.today(), key=f"date_{index}")
                     recipient_email = st.text_input("Emel Peringatan:", key=f"email_{index}")
@@ -210,13 +196,10 @@ with nav_tab1:
         else:
             st.error("Ubat tidak ditemui dalam pangkalan data.")
 
-# --- TAB 2: RATINGS SIMULATION ---
 with nav_tab2:
     st.subheader("⭐ Penilaian Sistem")
-    st.write("Sila berikan penilaian anda untuk sistem Medexa.")
     st.feedback("stars")
 
-# --- TAB 3: FEEDBACK SIMULATION ---
 with nav_tab3:
     st.subheader("📝 Borang Maklumbalas")
     st.text_input("Nama Anda:")
