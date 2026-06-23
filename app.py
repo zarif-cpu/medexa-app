@@ -95,20 +95,4 @@ st.markdown("""
     }
     .med-img-box {
         width: 60px;
-        height: 60px;
-        background-color: #f7fafc;
-        border-radius: 8px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border: 1px solid #e2e8f0;
-        overflow: hidden;
-    }
-    .med-details {
-        flex-grow: 1;
-    }
-    .med-title {
-        font-size: 16px;
-        font-weight: 700;
-        color: #1a202c;
-        margin: 0 0 4
+        height: 60px
