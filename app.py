@@ -74,7 +74,7 @@ st.markdown("""
     }
     .app-header {
         display: flex;
-        justify-content: space-between;
+        justify-content: center;
         align-items: center;
         padding: 10px 0;
         border-bottom: 1px solid #eef2f3;
@@ -133,23 +133,22 @@ st.markdown("""
 # ==========================================
 st.markdown("""
     <div class="app-header">
-        <span style="font-size:22px; cursor:pointer;">☰</span>
         <span class="app-title">Medexa Portal</span>
-        <span style="font-size:20px; cursor:pointer;">🔍 ↻</span>
     </div>
 """, unsafe_allow_html=True)
 
-# 🚀 CUSTOM LOGO DISPLAY LOGIC
 if os.path.exists("logo.png"):
-    st.image("logo.png", width=180)
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.image("logo.png", use_column_width=True)
 else:
-    st.title("🏥 Medexa") # Fallback just in case the logo isn't uploaded yet
+    st.title("🏥 Medexa")
 
 st.subheader("Medication Expiry Assistant")
 st.caption("Sistem semakan jangka hayat ubat pelbagai dos & kalkulator notifikasi pintar.")
 st.write("---")
 
-# 🗄️ VIRTUAL CABINET UI INTERFACE WITH DOWNLOAD FEATURE
+# 🗄️ VIRTUAL CABINET UI INTERFACE WITH SMART DOWNLOAD
 st.markdown("### 🗄️ Kabinet Ubat Saya")
 if st.session_state.medicine_cabinet:
     for item in st.session_state.medicine_cabinet:
@@ -162,23 +161,28 @@ if st.session_state.medicine_cabinet:
             </div>
         """, unsafe_allow_html=True)
         
-    # Create Side-by-Side Buttons for Download and Clear
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🗑️ Kosongkan Kabinet"):
             st.session_state.medicine_cabinet = []
             st.rerun()
     with col2:
-        # Convert Cabinet Dictionary to CSV format on the fly
-        cabinet_df = pd.DataFrame(st.session_state.medicine_cabinet)
-        cabinet_df.columns = ["Nama Ubat", "Pesakit", "Tarikh Dibuka", "Tarikh Luput Keselamatan"]
-        csv_export = cabinet_df.to_csv(index=False).encode('utf-8')
+        # 🚀 UPGRADED: Builds a clean, printable Text Document instead of CSV
+        txt_content = f"🏥 REKOD KABINET UBAT MEDEXA 🏥\nTarikh Cetakan: {datetime.date.today().strftime('%d/%m/%Y')}\n"
+        txt_content += "="*40 + "\n\n"
         
+        for item in st.session_state.medicine_cabinet:
+            txt_content += f"💊 Nama Ubat: {item['nama']}\n"
+            txt_content += f"👤 Pesakit: {item['pesakit']}\n"
+            txt_content += f"📅 Tarikh Dibuka: {item['dibuka']}\n"
+            txt_content += f"🚨 Tarikh Luput Keselamatan: {item['luput']}\n"
+            txt_content += "-"*40 + "\n\n"
+            
         st.download_button(
-            label="📥 Muat Turun Senarai",
-            data=csv_export,
-            file_name=f"Senarai_Ubat_Pesakit_{datetime.date.today()}.csv",
-            mime="text/csv",
+            label="📥 Muat Turun Senarai (Cetak)",
+            data=txt_content.encode('utf-8'),
+            file_name=f"Senarai_Ubat_Medexa_{datetime.date.today()}.txt",
+            mime="text/plain",
         )
 else:
     st.info("Kabinet ubat anda kosong. Cari ubat di bawah untuk menambah ke dalam rekod simpanan.")
